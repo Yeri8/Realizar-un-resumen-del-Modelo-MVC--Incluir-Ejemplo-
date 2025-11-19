@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MVC - Mini ToDo</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f7f7f7; margin:0; padding:20px; }
+    .wrap { max-width: 720px; margin: 24px auto; background:#fff; padding:20px 24px; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.07); }
+    h1 { text-align:center; }
+    input#newTodo { width:60%; padding:8px; }
+    button { padding:8px 10px; }
+    ul { padding-left:20px; }
+    li { margin:8px 0; }
+    .screenshot { margin-top:18px; text-align:center; }
+    .screenshot img { max-width:100%; height:auto; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,0.08); }
+    .explain { margin-top:16px; background:#fafafa; padding:12px; border-radius:6px; }
+    code { background:#f1f1f1; padding:2px 6px; border-radius:4px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>To-Do (MVC)</h1>
+
+    <input id="newTodo" placeholder="Nueva tarea..." />
+    <button id="addBtn">Añadir</button>
+    <ul id="list"></ul>
+
+    <script>
+      // MODEL
+      class TodoModel {
+        constructor() {
+          this.todos = []; // datos
+          this.onChange = () => {}; // callback de notificación
+        }
+        bindOnChange(callback) { this.onChange = callback; }
+        add(text) {
+          if (!text) return;
+          const item = { id: Date.now(), text, done: false };
+          this.todos.push(item);
+          this.onChange(this.todos);
+        }
+        remove(id) {
+          this.todos = this.todos.filter(t => t.id !== id);
+          this.onChange(this.todos);
+        }
+        toggle(id) {
+          this.todos = this.todos.map(t => t.id === id ? Object.assign({}, t, { done: !t.done }) : t);
+          this.onChange(this.todos);
+        }
+      }
+
+      // VIEW
+      class TodoView {
+        constructor() {
+          this.input = document.getElementById('newTodo');
+          this.addBtn = document.getElementById('addBtn');
+          this.list = document.getElementById('list');
+        }
+        render(todos) {
+          this.list.innerHTML = '';
+          todos.forEach(t => {
+            const li = document.createElement('li');
+            li.dataset.id = t.id;
+            li.innerHTML = `\n              <label style="text-decoration:${t.done ? 'line-through' : 'none'}">\n                <input type=\"checkbox\" ${t.done ? 'checked' : ''}/> ${this._escape(t.text)}\n              </label>\n              <button class=\"del\">Eliminar</button>\n            `;
+            this.list.appendChild(li);
+          });
+        }
+        _escape(s) {
+          const div = document.createElement('div');
+          div.textContent = s;
+          return div.innerHTML;
+        }
+        bindAdd(handler) {
+          this.addBtn.addEventListener('click', () => {
+            const value = this.input.value.trim();
+            if (value) {
+              handler(value);
+              this.input.value = '';
+              this.input.focus();
+            }
+          });
+          this.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this.addBtn.click();
+          });
+        }
+        bindToggleAndRemove(handlerToggle, handlerRemove) {
+          this.list.addEventListener('click', (e) => {
+            const li = e.target.closest('li');
+            if (!li) return;
+            const id = Number(li.dataset.id);
+            if (e.target.classList.contains('del')) {
+              handlerRemove(id);
+            } else if (e.target.type === 'checkbox') {
+              handlerToggle(id);
+            }
+          });
+        }
+      }
+
+      // CONTROLLER
+      class TodoController {
+        constructor(model, view) {
+          this.model = model;
+          this.view = view;
+          // cuando el model cambia, renderiza la vista
+          this.model.bindOnChange((todos) => this.view.render(todos));
+          // enlaza eventos de la vista con acciones en el model
+          this.view.bindAdd(text => this.model.add(text));
+          this.view.bindToggleAndRemove(
+            id => this.model.toggle(id),
+            id => this.model.remove(id)
+          );
+          // render inicial
+          this.view.render(this.model.todos);
+        }
+      }
+
+      // Inicialización
+      const app = new TodoController(new TodoModel(), new TodoView());
+    </script>
+
+    <div class="intro">
+      <h2>Realizar un resumen del Modelo MVC - Incluir Ejemplo</h2>
+      <p>MVC es un patrón de arquitectura que separa una aplicación en tres componentes principales: <strong>Model</strong> (datos y lógica), <strong>View</strong> (presentación) y <strong>Controller</strong> (orquesta la interacción). Esta separación mejora la organización, facilita pruebas y permite que equipos trabajen en distintas partes sin pisarse.</p>
+
+      <h3>Responsabilidades</h3>
+      <ul>
+        <li><strong>Model:</strong> representa los datos y la lógica de negocio. Notifica cambios a quien esté suscrito.</li>
+        <li><strong>View:</strong> muestra los datos al usuario y captura eventos de UI (clics, formularios). No debe contener lógica de negocio.</li>
+        <li><strong>Controller:</strong> recibe eventos de la View, actualiza el Model y normalmente pide a la View que se refresque.</li>
+      </ul>
+      <p><em>Flujo típico:</em> View → Controller → Model → (Model notifica) → View se actualiza.</p>
+
+      <h3>Ventajas / Cuándo usarlo (Resumido)</h3>
+      <ul>
+        <li>Mejora mantenibilidad y testeo.</li>
+        <li>Separación clara de responsabilidades.</li>
+        <li>Muy útil en apps con UI rica o equipos grandes.</li>
+        <li>No siempre necesario para apps muy pequeñas (overhead).</li>
+      </ul>
+
+      <h3>Ejemplo práctico: mini-app To-Do (HTML + JavaScript)</h3>
+      <p>Ejemplo práctico: mini-app To-Do (HTML + JavaScript). Código de ejemplo:</p>
+      <pre style="background:#f1f1f1;padding:12px;border-radius:6px;overflow:auto;white-space:pre-wrap;">
+&lt;!doctype html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8" /&gt;
+  &lt;title&gt;MVC - Mini ToDo&lt;/title&gt;
+  &lt;style&gt;
+    body { font-family: Arial; max-width: 540px; margin: 40px auto; }
+    ul { padding-left: 20px; }
+    li { margin: 6px 0; }
+    button { margin-left: 8px; }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;To-Do (MVC)&lt;/h1&gt;
+
+  &lt;input id="newTodo" placeholder="Nueva tarea..." /&gt;
+  &lt;button id="addBtn"&gt;Añadir&lt;/button&gt;
+
+  &lt;ul id="list"&gt;&lt;/ul&gt;
+
+  &lt;script&gt;
+    // MODEL
+    class TodoModel {
+      constructor() {
+        this.todos = [];            // datos
+        this.onChange = () =&gt; {};   // callback de notificación
+      }
+      bindOnChange(callback) { this.onChange = callback; }
+      add(text) {
+        if (!text) return;
+        const item = { id: Date.now(), text, done: false };
+        this.todos.push(item);
+        this.onChange(this.todos);
+      }
+      remove(id) {
+        this.todos = this.todos.filter(t =&gt; t.id !== id);
+        this.onChange(this.todos);
+      }
+      toggle(id) {
+        this.todos = this.todos.map(t =&gt; t.id === id ? {...t, done: !t.done} : t);
+        this.onChange(this.todos);
+      }
+    }
+
+    // VIEW
+    class TodoView {
+      constructor() {
+        this.input = document.getElementById('newTodo');
+        this.addBtn = document.getElementById('addBtn');
+        this.list = document.getElementById('list');
+      }
+
+      render(todos) {
+        this.list.innerHTML = '';
+        todos.forEach(t =&gt; {
+          const li = document.createElement('li');
+          li.dataset.id = t.id;
+          li.innerHTML = `
+            &lt;label style="text-decoration:${t.done ? 'line-through' : 'none'}"&gt;
+              &lt;input type="checkbox" ${t.done ? 'checked' : ''}/&gt; ${this._escape(t.text)}
+            &lt;/label&gt;
+            &lt;button class="del"&gt;Eliminar&lt;/button&gt;
+          `;
+          this.list.appendChild(li);
+        });
+      }
+
+      _escape(s) {
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      bindAdd(handler) {
+        this.addBtn.addEventListener('click', () =&gt; {
+          const value = this.input.value.trim();
+          if (value) {
+            handler(value);
+            this.input.value = '';
+            this.input.focus();
+          }
+        });
+        this.input.addEventListener('keydown', (e) =&gt; {
+          if (e.key === 'Enter') this.addBtn.click();
+        });
+      }
+
+      bindToggleAndRemove(handlerToggle, handlerRemove) {
+        this.list.addEventListener('click', (e) =&gt; {
+          const li = e.target.closest('li');
+          if (!li) return;
+          const id = Number(li.dataset.id);
+          if (e.target.classList.contains('del')) {
+            handlerRemove(id);
+          } else if (e.target.type === 'checkbox') {
+            handlerToggle(id);
+          }
+        });
+      }
+    }
+
+    // CONTROLLER
+    class TodoController {
+      constructor(model, view) {
+        this.model = model;
+        this.view = view;
+
+        // cuando el model cambia, renderiza la vista
+        this.model.bindOnChange((todos) =&gt; this.view.render(todos));
+
+        // enlaza eventos de la vista con acciones en el model
+        this.view.bindAdd(text =&gt; this.model.add(text));
+        this.view.bindToggleAndRemove(
+          id =&gt; this.model.toggle(id),
+          id =&gt; this.model.remove(id)
+        );
+
+        // render inicial
+        this.view.render(this.model.todos);
+      }
+    }
+
+    // Inicialización
+    const app = new TodoController(new TodoModel(), new TodoView());
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+      </pre>
+
+    </div>
+
+    <div class="screenshot">
+      <img src="/mnt/data/439c00cf-0e4e-4b98-893f-3dc9ef009309.png" alt="captura To-Do MVC" />
+    </div>
+
+    <div class="explain">
+      <h3>Qué muestra el ejemplo</h3>
+      <ul>
+        <li><strong>Model</strong> guarda la lista de tareas y notifica cambios mediante <code>onChange</code>.</li>
+        <li><strong>View</strong> renderiza la UI y expone métodos para enlazar eventos (añadir, eliminar, marcar).</li>
+        <li><strong>Controller</strong> conecta View ↔ Model: cuando el usuario añade una tarea, el controller llama <code>model.add(...)</code> y el model notifica para que la view se refresque.</li>
+      </ul>
+    </div>
+
+  </div>
+</body>
+</html>
